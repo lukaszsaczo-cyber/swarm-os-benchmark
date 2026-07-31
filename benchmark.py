@@ -99,7 +99,7 @@ def main():
     print("  • Paliwo koncowe: %.3f — gotowosc do kolejnych zadan" % results_sf[-1]['fuel'])
 
     # Zapisz wyniki
-    with open("benchmark_results.txt", "w") as f:
+    with open("results/benchmark_results.txt", "w") as f:
         f.write("BENCHMARK: HumanEval-style (100 zadan)\n")
         f.write("=" * 60 + "\n\n")
         f.write("Stateful:  Total Z=%.1f, Tokens=%d, avg W=%.4f, Pass=%.2f\n" %
@@ -110,7 +110,7 @@ def main():
         f.write("Oszczednosc tokens: %.1f%%\n" % savings_tokens)
         f.write("Przewaga jakosci: +%.4f W\n" % (sf_avg_W - sl_avg_W))
 
-    print("\n  Wyniki zapisano do: benchmark_results.txt")
+    print("\n  Wyniki zapisano do: results/benchmark_results.txt")
 
 if __name__ == "__main__":
     main()

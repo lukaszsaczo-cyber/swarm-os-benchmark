@@ -22,7 +22,7 @@ These figures are reproducible outputs of the simulator's assumptions. They are 
 python benchmark.py
 ```
 
-The report is written to `benchmark_results.txt`.
+The report is written to `results/benchmark_results.txt`.
 
 To regenerate the architecture image:
 
@@ -39,9 +39,8 @@ swarm_os_core.py              stateful and stateless policies
 humaneval_tasks.py            synthetic task metadata generator
 verify_results.py             deterministic regression check
 AUDIT.md                      technical scope and limitations
-benchmark_results.txt          reproduced aggregate output
-benchmark_run_log.txt          console log
-verification_log.txt           regression-check log
+results/benchmark_results.txt reproduced aggregate output
+results/benchmark_run_log.txt console log
 architecture.png              architecture illustration
 ```
 
