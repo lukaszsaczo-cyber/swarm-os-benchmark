@@ -1,0 +1,8 @@
+BENCHMARK: HumanEval-style (100 zadan)
+============================================================
+
+Stateful:  Total Z=14217.6, Tokens=56833, avg W=0.6668, Pass=0.67
+Stateless: Total Z=30280.0, Tokens=121120, avg W=0.6000, Pass=0.60
+Oszczednosc Z: 53.0%
+Oszczednosc tokens: 53.1%
+Przewaga jakosci: +0.0668 W

@@ -1,0 +1,8 @@
+sf_z      : actual=14217.6 expected=14217.6 OK
+sl_z      : actual=30280.0 expected=30280.0 OK
+sf_tokens : actual=56833 expected=56833 OK
+sl_tokens : actual=121120 expected=121120 OK
+sf_w      : actual=0.6668 expected=0.6668 OK
+sl_w      : actual=0.6 expected=0.6 OK
+q_count   : actual=10 expected=10 OK
+All deterministic checks passed.
