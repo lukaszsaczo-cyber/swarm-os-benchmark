@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "swarm-os-10x10-validation"
+version = "3.0.0-alpha.1"
+description = "Controlled 10-vs-10 Claude benchmark for SWARM_OS"
+requires-python = ">=3.10"
+dependencies = ["anthropic>=0.40.0"]
+
+[project.scripts]
+swarm-10x10 = "swarm_validation.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["swarm_validation*"]
