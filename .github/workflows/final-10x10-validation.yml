@@ -1,0 +1,36 @@
+name: validation-tests
+
+on:
+  push:
+    paths:
+      - "validation_10x10/**"
+      - ".github/workflows/final-10x10-validation.yml"
+  pull_request:
+    paths:
+      - "validation_10x10/**"
+      - ".github/workflows/final-10x10-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    defaults:
+      run:
+        working-directory: validation_10x10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Unit tests
+        run: python -m unittest discover -s swarm_validation/tests -v
+      - name: Offline 10x10 harness check
+        run: python scripts/offline_harness_check.py

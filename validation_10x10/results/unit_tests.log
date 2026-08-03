@@ -1,0 +1,14 @@
+test_analysis_confirmed_at_25_percent (test_core.CoreTests.test_analysis_confirmed_at_25_percent) ... ok
+test_analysis_rejects_ten_percent (test_core.CoreTests.test_analysis_rejects_ten_percent) ... ok
+test_assignment_is_disjoint_and_paired (test_core.CoreTests.test_assignment_is_disjoint_and_paired) ... ok
+test_end_to_end_10x10_fake_provider (test_core.CoreTests.test_end_to_end_10x10_fake_provider) ... ok
+test_evaluator_pass_and_fail (test_core.CoreTests.test_evaluator_pass_and_fail) ... ok
+test_final_protocol_has_160_pairs_and_960_max_calls (test_core.CoreTests.test_final_protocol_has_160_pairs_and_960_max_calls) ... ok
+test_normalize_full_function (test_core.CoreTests.test_normalize_full_function) ... ok
+test_resume_after_interruption_between_conditions (test_core.CoreTests.test_resume_after_interruption_between_conditions) ... ok
+test_swarm_memory_is_created (test_core.CoreTests.test_swarm_memory_is_created) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 22.593s
+
+OK
