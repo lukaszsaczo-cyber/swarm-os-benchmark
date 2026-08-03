@@ -124,7 +124,7 @@ class CoreTests(unittest.TestCase):
     def test_sonnet5_uses_default_sampling(self):
         config_path = Path(__file__).parents[2] / "examples" / "final_protocol.json"
         config = ProtocolConfig.load(config_path)
-        self.assertEqual(config.model, "claude-sonnet-5")
+        self.assertEqual(config.model, "claude-sonnet-4-6")
         self.assertIsNone(config.temperature)
 
     def test_final_protocol_has_160_pairs_and_960_max_calls(self):

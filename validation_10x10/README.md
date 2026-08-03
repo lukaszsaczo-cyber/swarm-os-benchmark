@@ -21,16 +21,16 @@ Nie ma tu przelicznika `linie × 4`, losowanego pass rate ani z góry wpisanej p
 - 16 różnych zadań na każdą parę,
 - 160 sparowanych obserwacji na warunek,
 - maksymalnie 3 próby na zadanie,
-- przypięty model `claude-sonnet-5`,
+- przypięty model `claude-sonnet-4-6`,
 - domyślne próbkowanie modelu (parametr `temperature` jest pominięty identycznie w obu warunkach),
 - prompt caching wyłączony,
 - maksymalnie 960 wywołań API w najgorszym przypadku.
 
 Pełna reguła jest zamrożona w [`PREREGISTRATION.md`](PREREGISTRATION.md).
 
-## Ważna poprawka zgodności z Claude Sonnet 5
+## Ważna poprawka zgodności z Claude Sonnet 4.6
 
-Przed pierwszym przebiegiem API protokół poprawiono technicznie: Claude Sonnet 5 odrzuca niedomyślne parametry próbkowania, dlatego `temperature` jest pomijane w obu warunkach. Hipoteza, przydział zadań, progi, liczba agentów i reguła werdyktu nie zostały zmienione.
+Przed pierwszym przebiegiem API protokół poprawiono technicznie: Claude Sonnet 4.6 odrzuca niedomyślne parametry próbkowania, dlatego `temperature` jest pomijane w obu warunkach. Hipoteza, przydział zadań, progi, liczba agentów i reguła werdyktu nie zostały zmienione.
 
 ## Instalacja
 

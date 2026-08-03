@@ -1,5 +1,5 @@
 {
-  "model": "claude-sonnet-5",
+  "model": "claude-sonnet-4-6",
   "agents_per_condition": 10,
   "tasks_per_agent": 16,
   "assignment_seed": 20260801,
@@ -13,6 +13,6 @@
   "quality_noninferiority_margin": 0.02,
   "bootstrap_samples": 20000,
   "max_live_calls": 960,
-  "pricing_input_usd_per_million": 2.0,
-  "pricing_output_usd_per_million": 10.0
+  "pricing_input_usd_per_million": 3.0,
+  "pricing_output_usd_per_million": 15.0
 }

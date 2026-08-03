@@ -12,7 +12,7 @@ from .dataset import BenchmarkTask
 
 @dataclass(frozen=True)
 class ProtocolConfig:
-    model: str = "claude-sonnet-5"
+    model: str = "claude-sonnet-4-6"
     agents_per_condition: int = 10
     tasks_per_agent: int = 16
     assignment_seed: int = 20260801

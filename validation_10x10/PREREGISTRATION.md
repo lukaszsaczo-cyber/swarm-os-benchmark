@@ -61,4 +61,4 @@ Potwierdzenie dotyczy wyłącznie modelu, zbioru, konfiguracji i daty testu. Nie
 
 ## Aneks techniczny przed pierwszym wywołaniem API — 2026-08-02
 
-Nie wykonano jeszcze żadnego płatnego wywołania ani nie zobaczono wyniku. Claude Sonnet 5 wymaga domyślnych parametrów próbkowania, dlatego pole `temperature` zmieniono z `0.0` na `null`, co oznacza pominięcie tego parametru w API identycznie dla SWARM_OS i kontroli. Nie zmieniono modelu, zadań, ziaren, liczby prób, metryk, progu 20%, marginesu jakości ani reguły werdyktu.
+Nie wykonano jeszcze żadnego płatnego wywołania ani nie zobaczono wyniku. Claude Sonnet 4.6 wymaga domyślnych parametrów próbkowania, dlatego pole `temperature` zmieniono z `0.0` na `null`, co oznacza pominięcie tego parametru w API identycznie dla SWARM_OS i kontroli. Nie zmieniono modelu, zadań, ziaren, liczby prób, metryk, progu 20%, marginesu jakości ani reguły werdyktu.

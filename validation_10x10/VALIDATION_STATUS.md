@@ -11,7 +11,7 @@
 - kontrola bez pamięci między zadaniami,
 - bootstrap klastrowy, próg 20% i non-inferiority jakości,
 - komplet surowych danych, manifest, checkpoint i raport,
-- zgodność z Claude Sonnet 5: domyślne próbkowanie bez parametru `temperature`,
+- zgodność z Claude Sonnet 4.6: domyślne próbkowanie bez parametru `temperature`,
 - 10/10 testów jednostkowych oraz pełny test offline 10×16.
 
 ## Jeszcze niewykonane

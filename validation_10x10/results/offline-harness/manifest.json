@@ -3,7 +3,7 @@
   "dataset": "/mnt/data/github_staging/unpacked/swarm-os-final-10x10-staging/validation_10x10/results/offline-harness-tasks.jsonl",
   "dataset_sha256": "10630144b40fa4aa1766e902a56ed71489f440d4e6134b8a6881537c055a972b",
   "protocol": {
-    "model": "claude-sonnet-5",
+    "model": "claude-sonnet-4-6",
     "agents_per_condition": 10,
     "tasks_per_agent": 16,
     "assignment_seed": 20260801,

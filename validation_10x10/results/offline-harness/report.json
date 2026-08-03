@@ -1,7 +1,7 @@
 {
   "schema_version": "3.0",
   "protocol": {
-    "model": "claude-sonnet-5",
+    "model": "claude-sonnet-4-6",
     "agents_per_condition": 10,
     "tasks_per_agent": 16,
     "assignment_seed": 20260801,

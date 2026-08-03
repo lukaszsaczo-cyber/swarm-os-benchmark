@@ -30,7 +30,7 @@ class AnthropicProvider:
             "system": system,
             "messages": messages,
         }
-        # Claude Sonnet 5 requires default sampling. Omitting temperature keeps
+        # Claude Sonnet 4.6 requires default sampling. Omitting temperature keeps
         # both benchmark conditions identical and avoids an API 400 response.
         if temperature is not None:
             request["temperature"] = temperature

@@ -5,7 +5,7 @@
 ## Testy jednostkowe
 
 - 10/10 zaliczonych.
-- Obejmują wykonanie poprawnego i błędnego kodu, normalizację odpowiedzi, rozłączny przydział zadań, pamięć SWARM_OS, regułę 20%, odrzucenie wyniku 10%, pełny przebieg 10×10, wznowienie po przerwaniu oraz zgodność próbkowania Claude Sonnet 5.
+- Obejmują wykonanie poprawnego i błędnego kodu, normalizację odpowiedzi, rozłączny przydział zadań, pamięć SWARM_OS, regułę 20%, odrzucenie wyniku 10%, pełny przebieg 10×10, wznowienie po przerwaniu oraz zgodność próbkowania Claude Sonnet 4.6.
 
 ## Pełny test uprzęży 10 × 16
 
