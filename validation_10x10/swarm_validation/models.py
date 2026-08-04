@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from typing import Any
 
 
@@ -13,12 +13,7 @@ class Usage:
 
     @property
     def total_tokens(self) -> int:
-        return (
-            self.input_tokens
-            + self.output_tokens
-            + self.cache_creation_input_tokens
-            + self.cache_read_input_tokens
-        )
+        return self.input_tokens + self.output_tokens + self.cache_creation_input_tokens + self.cache_read_input_tokens
 
     def to_dict(self) -> dict[str, int]:
         return asdict(self) | {"total_tokens": self.total_tokens}
@@ -39,7 +34,20 @@ class MemoryEntry:
     task_id: str
     keywords: list[str]
     lesson: str
+    passed: bool = True
+    cycle_index: int = 0
+    confidence: float = 1.0
+    evidence_count: int = 1
+
+
+@dataclass
+class WorkingObservation:
+    task_id: str
+    keywords: list[str]
+    lesson: str
     passed: bool
+    status: str
+    cycle_index: int
 
 
 @dataclass
@@ -50,6 +58,10 @@ class EngineState:
     state: str = "A"
     solved_count: int = 0
     previous_w: float = 0.5
+    cycle_index: int = 0
+    tasks_in_cycle: int = 0
+    phase: str = "ACTIVE"
+    spiral_level: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

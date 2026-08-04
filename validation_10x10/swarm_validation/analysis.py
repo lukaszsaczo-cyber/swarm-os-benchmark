@@ -69,6 +69,7 @@ def analyze(outcomes: list[TaskOutcome], config: ProtocolConfig) -> dict[str, An
 
     swarm = [item for item in outcomes if item.condition == "swarm"]
     baseline = [item for item in outcomes if item.condition == "baseline"]
+
     def summary(items: list[TaskOutcome]) -> dict[str, Any]:
         return {
             "observations": len(items),
@@ -88,7 +89,7 @@ def analyze(outcomes: list[TaskOutcome], config: ProtocolConfig) -> dict[str, An
     complete = len(outcomes) == config.agents_per_condition * config.tasks_per_agent * 2
     verdict = "CONFIRMED" if token_gate and quality_gate and complete else "NOT_CONFIRMED"
     return {
-        "schema_version": "3.0",
+        "schema_version": "4.0",
         "protocol": config.to_dict(),
         "swarm": summary(swarm),
         "baseline": summary(baseline),
@@ -111,7 +112,7 @@ def render_markdown(report: dict[str, Any]) -> str:
     base = report["baseline"]
     token_ci = report["token_reduction_cluster_bootstrap_ci95"]
     quality_ci = report["quality_delta_cluster_bootstrap_ci95"]
-    return f"""# SWARM_OS 10 vs 10 — final validation report
+    return f"""# SWARM_OS 10 vs 10 — validation report
 
 **Verdict: {report['verdict']}**
 
@@ -138,5 +139,5 @@ def render_markdown(report: dict[str, Any]) -> str:
 - Lower 95% token-reduction bound ≥ target: {report['gates']['token_reduction_lower_ci_at_least_target']}
 - Quality non-inferiority: {report['gates']['quality_noninferiority_lower_ci']}
 
-`CONFIRMED` means the run met the preregistered statistical rule. It does not mean metaphysical 100% certainty; it is evidence limited to this model, dataset, configuration and date.
+`CONFIRMED` means the run met the preregistered statistical rule. It does not mean absolute certainty.
 """

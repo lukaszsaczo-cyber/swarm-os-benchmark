@@ -5,14 +5,14 @@ import hashlib
 import json
 from pathlib import Path
 import random
-from typing import Any
+from typing import Any, Callable
 
 from .analysis import analyze, render_markdown
 from .code_extract import normalize_completion
 from .controller import StatelessController, SwarmController
 from .dataset import BenchmarkTask, load_tasks
-from .evaluator import SandboxConfig, evaluate
-from .models import AttemptRecord, TaskOutcome
+from .evaluator import Evaluation, SandboxConfig, evaluate
+from .models import AttemptRecord, EngineState, MemoryEntry, TaskOutcome, WorkingObservation
 from .protocol import ProtocolConfig, assign_tasks, dataset_sha256
 from .provider import Provider
 
@@ -36,7 +36,7 @@ def _error_feedback(status: str, stderr: str) -> str:
     tail = "\n".join((stderr or "").splitlines()[-12:])
     return (
         "The previous candidate failed the local unit tests. "
-        f"Status: {status}. Error tail:\n{tail[:2400]}\n"
+        f"Status: {status}. Error tail:\n{tail[:1800]}\n"
         "Return only a corrected Python function body, with no explanation or Markdown."
     )
 
@@ -48,11 +48,25 @@ def _task_message(task: BenchmarkTask) -> str:
     )
 
 
-def _restore_swarm(data: dict[str, Any]) -> SwarmController:
-    from .models import EngineState, MemoryEntry
-    controller = SwarmController(agent_id=int(data["agent_id"]))
+def _make_swarm(agent_id: int, config: ProtocolConfig) -> SwarmController:
+    return SwarmController(
+        agent_id=agent_id,
+        cycle_length=config.cycle_length,
+        max_intuitive_entries=config.max_intuitive_entries,
+        max_prompt_memory_entries=config.max_prompt_memory_entries,
+        min_keyword_overlap=config.memory_min_keyword_overlap,
+        min_jaccard=config.memory_min_jaccard,
+    )
+
+
+def _restore_swarm(data: dict[str, Any], config: ProtocolConfig) -> SwarmController:
+    controller = _make_swarm(int(data["agent_id"]), config)
     controller.state = EngineState(**data["state"])
-    controller.entries = [MemoryEntry(**entry) for entry in data.get("entries", [])]
+    controller.intuitive_memory = [MemoryEntry(**entry) for entry in data.get("intuitive_memory", [])]
+    controller.working_memory = [WorkingObservation(**entry) for entry in data.get("working_memory", [])]
+    controller.transient_failures = list(data.get("transient_failures", []))
+    controller.pending_intuitive = [MemoryEntry(**entry) for entry in data.get("pending_intuitive", [])]
+    controller.phase_history = list(data.get("phase_history", []))
     return controller
 
 
@@ -60,7 +74,11 @@ def _controller_snapshot(controller: SwarmController) -> dict[str, Any]:
     return {
         "agent_id": controller.agent_id,
         "state": controller.state.to_dict(),
-        "entries": [asdict(entry) for entry in controller.entries],
+        "intuitive_memory": [asdict(entry) for entry in controller.intuitive_memory],
+        "working_memory": [asdict(entry) for entry in controller.working_memory],
+        "transient_failures": list(controller.transient_failures),
+        "pending_intuitive": [asdict(entry) for entry in controller.pending_intuitive],
+        "phase_history": list(controller.phase_history),
     }
 
 
@@ -73,10 +91,12 @@ class BenchmarkRunner:
         tasks_path: str | Path,
         output_dir: str | Path,
         resume: bool = False,
+        evaluator_fn: Callable[[BenchmarkTask, str, SandboxConfig | None], Evaluation] = evaluate,
     ) -> None:
         self.config = config
         self.config.validate()
         self.provider = provider
+        self.evaluator_fn = evaluator_fn
         self.tasks_path = Path(tasks_path)
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -85,7 +105,7 @@ class BenchmarkRunner:
         self.attempts_path = self.output_dir / "attempts.jsonl"
         self.outcomes_path = self.output_dir / "outcomes.jsonl"
         self.checkpoint_path = self.output_dir / "checkpoint.json"
-        self.swarm = {i: SwarmController(i) for i in range(config.agents_per_condition)}
+        self.swarm = {i: _make_swarm(i, config) for i in range(config.agents_per_condition)}
         self.baseline = {i: StatelessController(i) for i in range(config.agents_per_condition)}
         self.outcomes: list[TaskOutcome] = []
         self.completed: set[str] = set()
@@ -96,13 +116,14 @@ class BenchmarkRunner:
             raise FileExistsError(f"Output directory is not empty: {self.output_dir}; use --resume or a new directory")
 
         manifest = {
-            "schema_version": "3.0",
+            "schema_version": "4.0",
             "dataset": str(self.tasks_path),
             "dataset_sha256": dataset_sha256(self.tasks_path),
             "protocol": config.to_dict(),
             "assignment": {str(k): [task.task_id for task in v] for k, v in self.assignments.items()},
             "worst_case_api_calls": config.agents_per_condition * config.tasks_per_agent * config.max_attempts * 2,
             "prompt_caching": False,
+            "memory_cycle": "ROZPAD_II -> 3 -> 6 -> 28 -> 40 -> NEW_CYCLE",
         }
         _json_dump(self.output_dir / "manifest.json", manifest)
 
@@ -117,7 +138,7 @@ class BenchmarkRunner:
         self.completed = set(data.get("completed", []))
         self.outcomes = [TaskOutcome(**item) for item in data.get("outcomes", [])]
         self.api_calls = int(data.get("api_calls", 0))
-        self.swarm = {int(key): _restore_swarm(value) for key, value in data["swarm_controllers"].items()}
+        self.swarm = {int(key): _restore_swarm(value, self.config) for key, value in data["swarm_controllers"].items()}
 
     def _save_checkpoint(self) -> None:
         data = {
@@ -140,7 +161,7 @@ class BenchmarkRunner:
         call_order: int,
     ) -> TaskOutcome:
         controller = self.swarm[agent_id] if condition == "swarm" else self.baseline[agent_id]
-        system = controller.system_prompt(task)
+        first_system = controller.system_prompt(task)
         messages: list[dict[str, Any]] = [{"role": "user", "content": _task_message(task)}]
         total_input = total_output = total_cache_create = total_cache_read = 0
         total_latency = total_execution = 0.0
@@ -152,6 +173,7 @@ class BenchmarkRunner:
         records: list[AttemptRecord] = []
 
         for attempt in range(1, self.config.max_attempts + 1):
+            system = first_system if attempt == 1 else controller.retry_system_prompt(task)
             self.api_calls += 1
             if self.api_calls > self.config.max_live_calls:
                 raise RuntimeError(f"Application API-call guard exceeded: {self.config.max_live_calls}")
@@ -164,7 +186,7 @@ class BenchmarkRunner:
                 metadata={"condition": condition, "agent_id": agent_id, "task_id": task.task_id, "attempt": attempt},
             )
             completion = normalize_completion(response.text, task.prompt, task.entry_point)
-            result = evaluate(task, completion, SandboxConfig(self.config.timeout_seconds, self.config.memory_mb))
+            result = self.evaluator_fn(task, completion, SandboxConfig(self.config.timeout_seconds, self.config.memory_mb))
             usage = response.usage
             total_input += usage.input_tokens
             total_output += usage.output_tokens

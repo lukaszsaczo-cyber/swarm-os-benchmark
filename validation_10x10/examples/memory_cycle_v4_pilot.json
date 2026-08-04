@@ -1,0 +1,23 @@
+{
+  "model": "claude-sonnet-4-6",
+  "agents_per_condition": 10,
+  "tasks_per_agent": 16,
+  "assignment_seed": 20260801,
+  "call_order_seed": 330016,
+  "max_attempts": 3,
+  "max_tokens": 2048,
+  "temperature": null,
+  "timeout_seconds": 3.0,
+  "memory_mb": 512,
+  "target_token_reduction": 0.2,
+  "quality_noninferiority_margin": 0.02,
+  "bootstrap_samples": 20000,
+  "max_live_calls": 960,
+  "pricing_input_usd_per_million": 3.0,
+  "pricing_output_usd_per_million": 15.0,
+  "cycle_length": 8,
+  "max_intuitive_entries": 4,
+  "max_prompt_memory_entries": 1,
+  "memory_min_keyword_overlap": 2,
+  "memory_min_jaccard": 0.08
+}
