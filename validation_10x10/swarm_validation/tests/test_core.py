@@ -8,8 +8,8 @@ import unittest
 from swarm_validation.analysis import analyze
 from swarm_validation.code_extract import normalize_completion
 from swarm_validation.controller import SwarmController
-from swarm_validation.dataset import BenchmarkTask, load_tasks
-from swarm_validation.evaluator import evaluate
+from swarm_validation.dataset import BenchmarkTask
+from swarm_validation.evaluator import Evaluation, evaluate
 from swarm_validation.models import ProviderResponse, TaskOutcome, Usage
 from swarm_validation.protocol import ProtocolConfig, assign_tasks
 from swarm_validation.runner import BenchmarkRunner
@@ -23,6 +23,12 @@ class FakeProvider:
         condition = metadata["condition"]
         usage = Usage(input_tokens=60 if condition == "swarm" else 80, output_tokens=15 if condition == "swarm" else 20)
         return ProviderResponse(completion, usage, model, "end_turn", 1.0, f"fake-{condition}-{name}")
+
+
+def fast_evaluate(task, completion, config=None):
+    expected = int(task.task_id.split("/")[-1])
+    passed = f"return {expected}" in completion
+    return Evaluation(passed, "passed" if passed else "failed", 0.1, 0 if passed else 1, "", "")
 
 
 def write_tasks(path: Path, count: int) -> None:
@@ -57,12 +63,18 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(len(set(ids)), 20)
         self.assertEqual(len(assignment), 10)
 
-    def test_swarm_memory_is_created(self):
-        task = BenchmarkTask("x", "def add(a,b):\n", "def check(candidate): pass", "add")
-        controller = SwarmController(0)
-        self.assertNotIn("retained memory", controller.system_prompt(task))
+    def test_swarm_memory_is_created_only_after_crossing_40(self):
+        task = BenchmarkTask(
+            "x",
+            "def add(a,b):\n    \"\"\"sequence list sum\"\"\"\n",
+            "def check(candidate): pass",
+            "add",
+        )
+        controller = SwarmController(0, cycle_length=1)
+        self.assertNotIn("Prior-cycle intuition", controller.system_prompt(task))
         controller.observe(task, True, "    return a+b\n", "")
-        self.assertIn("retained memory", controller.system_prompt(task))
+        self.assertEqual(controller.state.phase, "40")
+        self.assertIn("Prior-cycle intuition", controller.system_prompt(task))
 
     def test_analysis_confirmed_at_25_percent(self):
         config = ProtocolConfig(tasks_per_agent=1, max_live_calls=60, bootstrap_samples=1000)
@@ -88,7 +100,7 @@ class CoreTests(unittest.TestCase):
             tasks_path = root / "tasks.jsonl"
             write_tasks(tasks_path, 10)
             config = ProtocolConfig(tasks_per_agent=1, max_live_calls=60, bootstrap_samples=1000)
-            runner = BenchmarkRunner(config=config, provider=FakeProvider(), tasks_path=tasks_path, output_dir=root / "results")
+            runner = BenchmarkRunner(config=config, provider=FakeProvider(), tasks_path=tasks_path, output_dir=root / "results", evaluator_fn=fast_evaluate)
             report = runner.run()
             self.assertEqual(report["verdict"], "CONFIRMED")
             self.assertEqual(report["swarm"]["observations"], 10)
@@ -112,24 +124,22 @@ class CoreTests(unittest.TestCase):
             config = ProtocolConfig(tasks_per_agent=1, max_live_calls=60, bootstrap_samples=200)
             output = root / "results"
             with self.assertRaises(RuntimeError):
-                BenchmarkRunner(config=config, provider=InterruptOnce(), tasks_path=tasks_path, output_dir=output).run()
+                BenchmarkRunner(config=config, provider=InterruptOnce(), tasks_path=tasks_path, output_dir=output, evaluator_fn=fast_evaluate).run()
             checkpoint = json.loads((output / "checkpoint.json").read_text())
             self.assertEqual(len(checkpoint["outcomes"]), 1)
-            report = BenchmarkRunner(config=config, provider=FakeProvider(), tasks_path=tasks_path, output_dir=output, resume=True).run()
+            report = BenchmarkRunner(config=config, provider=FakeProvider(), tasks_path=tasks_path, output_dir=output, resume=True, evaluator_fn=fast_evaluate).run()
             self.assertEqual(report["swarm"]["observations"], 10)
             self.assertEqual(report["baseline"]["observations"], 10)
             with (output / "outcomes.jsonl").open(encoding="utf-8") as handle:
                 self.assertEqual(sum(1 for _ in handle), 20)
 
     def test_sonnet5_uses_default_sampling(self):
-        config_path = Path(__file__).parents[2] / "examples" / "final_protocol.json"
-        config = ProtocolConfig.load(config_path)
+        config = ProtocolConfig()
         self.assertEqual(config.model, "claude-sonnet-4-6")
         self.assertIsNone(config.temperature)
 
     def test_final_protocol_has_160_pairs_and_960_max_calls(self):
-        config_path = Path(__file__).parents[2] / "examples" / "final_protocol.json"
-        config = ProtocolConfig.load(config_path)
+        config = ProtocolConfig()
         config.validate()
         self.assertEqual(config.agents_per_condition * config.tasks_per_agent, 160)
         self.assertEqual(config.agents_per_condition * config.tasks_per_agent * config.max_attempts * 2, 960)

@@ -28,6 +28,11 @@ class ProtocolConfig:
     max_live_calls: int = 960
     pricing_input_usd_per_million: float | None = None
     pricing_output_usd_per_million: float | None = None
+    cycle_length: int = 8
+    max_intuitive_entries: int = 4
+    max_prompt_memory_entries: int = 1
+    memory_min_keyword_overlap: int = 2
+    memory_min_jaccard: float = 0.08
 
     @classmethod
     def load(cls, path: str | Path) -> "ProtocolConfig":
@@ -42,8 +47,8 @@ class ProtocolConfig:
     def validate(self) -> None:
         if self.agents_per_condition != 10:
             raise ValueError("Final protocol requires exactly 10 agents per condition")
-        if self.tasks_per_agent < 1 or self.max_attempts < 1:
-            raise ValueError("tasks_per_agent and max_attempts must be positive")
+        if self.tasks_per_agent < 1 or self.max_attempts < 1 or self.cycle_length < 1:
+            raise ValueError("tasks_per_agent, max_attempts and cycle_length must be positive")
         expected = self.agents_per_condition * self.tasks_per_agent * self.max_attempts * 2
         if self.max_live_calls < expected:
             raise ValueError(f"max_live_calls={self.max_live_calls} is below worst-case protocol calls={expected}")
@@ -57,10 +62,8 @@ def assign_tasks(tasks: list[BenchmarkTask], config: ProtocolConfig) -> dict[int
     selected = list(tasks)
     random.Random(config.assignment_seed).shuffle(selected)
     selected = selected[:needed]
-    return {
-        agent_id: selected[agent_id * config.tasks_per_agent : (agent_id + 1) * config.tasks_per_agent]
-        for agent_id in range(config.agents_per_condition)
-    }
+    return {agent_id: selected[agent_id * config.tasks_per_agent:(agent_id + 1) * config.tasks_per_agent]
+            for agent_id in range(config.agents_per_condition)}
 
 
 def dataset_sha256(path: str | Path) -> str:
