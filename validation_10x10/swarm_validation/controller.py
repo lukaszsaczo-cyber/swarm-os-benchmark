@@ -112,6 +112,10 @@ class SwarmController:
     recovery_window: int = 3
     stagnation_persistence: int = 2
     crack_persistence: int = 3
+    crack_load: float = 1.10
+    stagnation_drain: float = 0.18
+    stagnation_tension_gain: float = 0.16
+    stagnation_regulation_loss: float = 0.10
 
     state: EngineState = field(default_factory=EngineState)
     intuitive_memory: list[MemoryEntry] = field(default_factory=list)
@@ -179,6 +183,8 @@ class SwarmController:
         self.state.rhythm_alignment = 0.5
         self.state.crystallization = 0.0
         self.state.last_quality = 0.5
+        self.state.whole_alignment = 0.5
+        self.state.mismatch_load = 0.0
         self.state.previous_w = 0.5
         self.state.success_streak = 0
         self.state.failure_streak = 0
@@ -219,10 +225,35 @@ class SwarmController:
         # Retry uses local test feedback only. Intuition is removed after a miss.
         return BASE_SYSTEM
 
+    def _whole_alignment(self) -> float:
+        state = self.state
+        # A weak direction, rhythm or regulation lowers the whole; no component can
+        # hide the loss of fit with the wider system.
+        product = max(
+            0.0,
+            state.vertical_alignment * state.rhythm_alignment * state.regulation,
+        )
+        return _clamp(product ** (1.0 / 3.0))
+
+    def _balance_for(self, fuel: float) -> float:
+        state = self.state
+        return _clamp(
+            0.38 * state.vertical_alignment
+            + 0.24 * state.rhythm_alignment
+            + 0.20 * state.regulation
+            + 0.18 * _clamp(fuel)
+            - 0.15 * state.tension
+        )
+
     def _update_metrics(self, quality: float, attempts: int, max_attempts: int) -> None:
         state = self.state
         retry_ratio = (attempts - 1) / max(1, max_attempts - 1)
-        stress = _clamp(retry_ratio * 0.55 + (0.65 if quality == 0.0 else 0.0))
+        prior_failure_pressure = min(1.0, state.failure_streak / 3.0)
+        stress = _clamp(
+            retry_ratio * 0.55
+            + (0.65 if quality == 0.0 else 0.0)
+            + 0.10 * prior_failure_pressure
+        )
 
         state.vertical_alignment = _clamp(
             0.65 * state.vertical_alignment + 0.35 * quality
@@ -249,33 +280,44 @@ class SwarmController:
             - 0.08 * deviation
         )
 
-        provisional_balance = _clamp(
-            0.38 * state.vertical_alignment
-            + 0.24 * state.rhythm_alignment
-            + 0.20 * state.regulation
-            + 0.18 * _clamp(state.fuel)
-            - 0.15 * state.tension
+        state.whole_alignment = self._whole_alignment()
+        mismatch = 1.0 - state.whole_alignment
+        provisional_balance = self._balance_for(state.fuel)
+
+        energy_gain = 0.18 * quality + 0.06 * state.regulation
+        energy_cost = (
+            0.045
+            + 0.18 * deviation
+            + 0.14 * state.tension
+            + 0.12 * stress
         )
-        fuel_delta = (
-            0.18 * quality
-            + 0.06 * state.regulation
-            - 0.045
-            - 0.18 * deviation
-            - 0.14 * state.tension
-            - 0.12 * stress
-        )
-        state.fuel = _clamp(state.fuel + fuel_delta, 0.0, 1.25)
-        state.balance = _clamp(
-            0.38 * state.vertical_alignment
-            + 0.24 * state.rhythm_alignment
-            + 0.20 * state.regulation
-            + 0.18 * _clamp(state.fuel)
-            - 0.15 * state.tension
-        )
+
+        if state.phase == "STAGNACJA":
+            # Technical output cannot fully replenish an organization that is no
+            # longer aligned with the wider system. Persistent mismatch therefore
+            # consumes fuel, weakens regulation and raises tension until recovery
+            # or a real energetic crack occurs.
+            energy_gain *= state.whole_alignment
+            mismatch_cost = self.stagnation_drain * mismatch * (1.0 + state.tension)
+            energy_cost += mismatch_cost
+            state.tension = _clamp(
+                state.tension + self.stagnation_tension_gain * mismatch
+            )
+            state.regulation = _clamp(
+                state.regulation - self.stagnation_regulation_loss * mismatch
+            )
+            state.mismatch_load += mismatch * (1.0 + state.tension)
+            state.whole_alignment = self._whole_alignment()
+        elif state.phase == "RYTM" and state.whole_alignment >= self.rhythm_threshold:
+            state.mismatch_load = max(0.0, state.mismatch_load - 0.35)
+
+        state.fuel = _clamp(state.fuel + energy_gain - energy_cost, 0.0, 1.25)
+        state.balance = self._balance_for(state.fuel)
 
         if quality >= 0.70:
             state.crystallization = _clamp(
-                0.65 * state.crystallization + 0.35 * max(state.balance, provisional_balance)
+                0.65 * state.crystallization
+                + 0.35 * max(state.balance, provisional_balance)
             )
             state.success_streak += 1
             state.failure_streak = 0
@@ -420,32 +462,40 @@ class SwarmController:
                 self._set_phase("RYTM")
         elif phase == "RYTM":
             mismatch = (
-                state.rhythm_alignment < self.stagnation_threshold
+                state.whole_alignment < self.stagnation_threshold
+                or state.rhythm_alignment < self.stagnation_threshold
                 or state.balance < 0.44
             )
             state.stagnation_streak = state.stagnation_streak + 1 if mismatch else 0
+            if mismatch:
+                state.mismatch_load += (1.0 - state.whole_alignment) * (1.0 + state.tension)
+            else:
+                state.mismatch_load = max(0.0, state.mismatch_load - 0.25)
             if state.stagnation_streak >= self.stagnation_persistence:
                 self._set_phase("STAGNACJA")
         elif phase == "STAGNACJA":
             recovered = (
                 quality >= 0.70
+                and state.whole_alignment >= self.rhythm_threshold
                 and state.rhythm_alignment >= self.rhythm_threshold
                 and state.balance >= 0.52
                 and state.fuel >= self.recovery_fuel
             )
             if recovered:
                 state.stagnation_streak = 0
+                state.mismatch_load = max(0.0, state.mismatch_load - 0.50)
                 self._set_phase("RYTM")
                 return
 
             state.stagnation_streak += 1
+            # Pęknięcie is caused by energetic consequences of lasting mismatch,
+            # not by an arbitrary timeout. The load is the integrated cost of
+            # remaining out of tune with the wider system.
             crack_ready = (
-                state.stagnation_streak >= self.crack_persistence
-                and (
-                    state.balance <= self.crack_threshold
-                    or state.fuel <= self.crack_threshold
-                    or state.tension >= 0.72
-                )
+                state.mismatch_load >= self.crack_load
+                or state.balance <= self.crack_threshold
+                or state.fuel <= self.crack_threshold
+                or state.tension >= 0.72
             )
             if crack_ready:
                 self._process_second_collapse()

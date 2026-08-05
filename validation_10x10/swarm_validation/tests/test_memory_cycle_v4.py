@@ -207,9 +207,10 @@ class CycleMemoryTests(unittest.TestCase):
             swarm_calls = [
                 call for call in provider.calls if call[0]["condition"] == "swarm"
             ]
-            retry = [call for call in swarm_calls if call[0]["attempt"] == 2][0]
+            retry = next(call for call in swarm_calls if call[0]["attempt"] == 2)
             self.assertEqual(retry[1], BASE_SYSTEM)
-            self.assertGreater(len(retry[2]), 1)
+            self.assertEqual(retry[2][-1]["role"], "user")
+            self.assertIn("AssertionError", retry[2][-1]["content"])
 
     def test_success_increases_fuel_failure_decreases_fuel(self):
         success = SwarmController(0)

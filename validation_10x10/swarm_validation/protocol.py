@@ -51,6 +51,10 @@ class ProtocolConfig:
     recovery_window: int = 3
     stagnation_persistence: int = 2
     crack_persistence: int = 3
+    crack_load: float = 1.10
+    stagnation_drain: float = 0.18
+    stagnation_tension_gain: float = 0.16
+    stagnation_regulation_loss: float = 0.10
 
     @classmethod
     def load(cls, path: str | Path) -> "ProtocolConfig":
@@ -73,6 +77,7 @@ class ProtocolConfig:
                 f"max_live_calls={self.max_live_calls} is below worst-case protocol calls={expected}"
             )
         bounded = {
+            "memory_min_jaccard": self.memory_min_jaccard,
             "memory_recall_fuel": self.memory_recall_fuel,
             "vertical_threshold": self.vertical_threshold,
             "crystallization_threshold": self.crystallization_threshold,
@@ -83,10 +88,23 @@ class ProtocolConfig:
             "first_collapse_balance": self.first_collapse_balance,
             "recovery_fuel": self.recovery_fuel,
             "recovery_balance": self.recovery_balance,
+            "stagnation_drain": self.stagnation_drain,
+            "stagnation_tension_gain": self.stagnation_tension_gain,
+            "stagnation_regulation_loss": self.stagnation_regulation_loss,
         }
         for name, value in bounded.items():
             if not 0.0 <= value <= 1.0:
                 raise ValueError(f"{name} must be in [0, 1]")
+        if not self.crack_threshold <= self.stagnation_threshold <= self.rhythm_threshold:
+            raise ValueError(
+                "crack_threshold <= stagnation_threshold <= rhythm_threshold is required"
+            )
+        if self.first_collapse_fuel >= self.recovery_fuel:
+            raise ValueError("first_collapse_fuel must be below recovery_fuel")
+        if self.first_collapse_balance >= self.recovery_balance:
+            raise ValueError("first_collapse_balance must be below recovery_balance")
+        if self.crack_load <= 0.0:
+            raise ValueError("crack_load must be positive")
         for name, value in {
             "first_collapse_persistence": self.first_collapse_persistence,
             "recovery_window": self.recovery_window,

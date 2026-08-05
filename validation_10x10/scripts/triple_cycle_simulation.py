@@ -117,9 +117,9 @@ def fast_evaluate(task, completion, config=None):
     )
 
 
-def write_tasks(path: Path) -> None:
+def write_tasks(path: Path, count: int) -> None:
     with path.open("w", encoding="utf-8") as handle:
-        for index in range(160):
+        for index in range(count):
             record = {
                 "task_id": f"t/{index}",
                 "prompt": (
@@ -137,7 +137,6 @@ def run_scenario(root: Path, scenario: str, seed: int) -> dict[str, object]:
     shutil.rmtree(output, ignore_errors=True)
     output.mkdir(parents=True)
     tasks = output / "tasks.jsonl"
-    write_tasks(tasks)
 
     provider = FuelCycleProvider(scenario, seed)
     config = ProtocolConfig(
@@ -145,6 +144,7 @@ def run_scenario(root: Path, scenario: str, seed: int) -> dict[str, object]:
         max_live_calls=960,
         cycle_length=16,
     )
+    write_tasks(tasks, config.agents_per_condition * config.tasks_per_agent)
     runner = BenchmarkRunner(
         config=config,
         provider=provider,

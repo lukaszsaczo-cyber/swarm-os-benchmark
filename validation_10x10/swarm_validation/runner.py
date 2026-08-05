@@ -70,6 +70,10 @@ def _make_swarm(agent_id: int, config: ProtocolConfig) -> SwarmController:
         recovery_window=config.recovery_window,
         stagnation_persistence=config.stagnation_persistence,
         crack_persistence=config.crack_persistence,
+        crack_load=config.crack_load,
+        stagnation_drain=config.stagnation_drain,
+        stagnation_tension_gain=config.stagnation_tension_gain,
+        stagnation_regulation_loss=config.stagnation_regulation_loss,
     )
 
 
@@ -137,9 +141,9 @@ class BenchmarkRunner:
             "assignment": {str(k): [task.task_id for task in v] for k, v in self.assignments.items()},
             "worst_case_api_calls": config.agents_per_condition * config.tasks_per_agent * config.max_attempts * 2,
             "prompt_caching": False,
-            "memory_cycle": "KRYSTALIZACJA -> RYTM -> STAGNACJA -> PĘKNIĘCIE -> ROZPAD_II -> 3 -> 6 -> 28 -> 40 -> RÓŻNICA",
+            "memory_cycle": "RÓŻNICA -> NAPIĘCIE -> REGULACJA -> DOPASOWANIE -> PION -> KRYSTALIZACJA -> RYTM -> STAGNACJA -> PĘKNIĘCIE -> ROZPAD_II -> 3 -> 6 -> 28 -> 40 -> RÓŻNICA",
             "first_collapse": "loss of fuel/balance before crystallization -> ROZPAD_I -> REGULACJA recovery or 40 without retained intuition",
-            "cycle_trigger": "dynamic metrics; task count is a working-memory safety ceiling only",
+            "cycle_trigger": "loss of alignment with the wider system drains fuel, raises tension and drives STAGNACJA -> PĘKNIĘCIE; task count is a working-memory safety ceiling only",
         }
         _json_dump(self.output_dir / "manifest.json", manifest)
 

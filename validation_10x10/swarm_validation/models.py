@@ -80,6 +80,10 @@ class EngineState:
     crystallization: float = 0.0
     last_quality: float = 0.5
 
+    # Alignment with the wider system and the accumulated energetic cost of mismatch.
+    whole_alignment: float = 0.5
+    mismatch_load: float = 0.0
+
     # Persistence counters prevent one noisy observation from forcing a phase change.
     phase_age: int = 0
     success_streak: int = 0
