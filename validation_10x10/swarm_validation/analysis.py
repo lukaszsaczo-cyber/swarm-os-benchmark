@@ -89,7 +89,7 @@ def analyze(outcomes: list[TaskOutcome], config: ProtocolConfig) -> dict[str, An
     complete = len(outcomes) == config.agents_per_condition * config.tasks_per_agent * 2
     verdict = "CONFIRMED" if token_gate and quality_gate and complete else "NOT_CONFIRMED"
     return {
-        "schema_version": "4.0",
+        "schema_version": "5.0",
         "protocol": config.to_dict(),
         "swarm": summary(swarm),
         "baseline": summary(baseline),

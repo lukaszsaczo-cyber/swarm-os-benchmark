@@ -56,6 +56,24 @@ def _make_swarm(agent_id: int, config: ProtocolConfig) -> SwarmController:
         max_prompt_memory_entries=config.max_prompt_memory_entries,
         min_keyword_overlap=config.memory_min_keyword_overlap,
         min_jaccard=config.memory_min_jaccard,
+        memory_recall_fuel=config.memory_recall_fuel,
+        vertical_threshold=config.vertical_threshold,
+        crystallization_threshold=config.crystallization_threshold,
+        rhythm_threshold=config.rhythm_threshold,
+        stagnation_threshold=config.stagnation_threshold,
+        crack_threshold=config.crack_threshold,
+        first_collapse_fuel=config.first_collapse_fuel,
+        first_collapse_balance=config.first_collapse_balance,
+        first_collapse_persistence=config.first_collapse_persistence,
+        recovery_fuel=config.recovery_fuel,
+        recovery_balance=config.recovery_balance,
+        recovery_window=config.recovery_window,
+        stagnation_persistence=config.stagnation_persistence,
+        crack_persistence=config.crack_persistence,
+        crack_load=config.crack_load,
+        stagnation_drain=config.stagnation_drain,
+        stagnation_tension_gain=config.stagnation_tension_gain,
+        stagnation_regulation_loss=config.stagnation_regulation_loss,
     )
 
 
@@ -116,14 +134,16 @@ class BenchmarkRunner:
             raise FileExistsError(f"Output directory is not empty: {self.output_dir}; use --resume or a new directory")
 
         manifest = {
-            "schema_version": "4.0",
+            "schema_version": "5.0",
             "dataset": str(self.tasks_path),
             "dataset_sha256": dataset_sha256(self.tasks_path),
             "protocol": config.to_dict(),
             "assignment": {str(k): [task.task_id for task in v] for k, v in self.assignments.items()},
             "worst_case_api_calls": config.agents_per_condition * config.tasks_per_agent * config.max_attempts * 2,
             "prompt_caching": False,
-            "memory_cycle": "ROZPAD_II -> 3 -> 6 -> 28 -> 40 -> NEW_CYCLE",
+            "memory_cycle": "RÓŻNICA -> NAPIĘCIE -> REGULACJA -> DOPASOWANIE -> PION -> KRYSTALIZACJA -> RYTM -> STAGNACJA -> PĘKNIĘCIE -> ROZPAD_II -> 3 -> 6 -> 28 -> 40 -> RÓŻNICA",
+            "first_collapse": "loss of fuel/balance before crystallization -> ROZPAD_I -> REGULACJA recovery or 40 without retained intuition",
+            "cycle_trigger": "loss of alignment with the wider system drains fuel, raises tension and drives STAGNACJA -> PĘKNIĘCIE; task count is a working-memory safety ceiling only",
         }
         _json_dump(self.output_dir / "manifest.json", manifest)
 
@@ -215,7 +235,14 @@ class BenchmarkRunner:
                 {"role": "user", "content": _error_feedback(result.status, result.stderr)},
             ]
 
-        controller.observe(task, passed, final_completion, final_error)
+        controller.observe(
+            task,
+            passed,
+            final_completion,
+            final_error,
+            attempts=len(records),
+            max_attempts=self.config.max_attempts,
+        )
         engine_after = self.swarm[agent_id].state.to_dict() if condition == "swarm" else None
         if records:
             records[-1].engine_after = engine_after

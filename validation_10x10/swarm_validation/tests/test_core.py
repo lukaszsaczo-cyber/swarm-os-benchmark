@@ -63,18 +63,36 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(len(set(ids)), 20)
         self.assertEqual(len(assignment), 10)
 
-    def test_swarm_memory_is_created_only_after_crossing_40(self):
-        task = BenchmarkTask(
-            "x",
-            "def add(a,b):\n    \"\"\"sequence list sum\"\"\"\n",
-            "def check(candidate): pass",
-            "add",
-        )
-        controller = SwarmController(0, cycle_length=1)
-        self.assertNotIn("Prior-cycle intuition", controller.system_prompt(task))
-        controller.observe(task, True, "    return a+b\n", "")
-        self.assertEqual(controller.state.phase, "40")
-        self.assertIn("Prior-cycle intuition", controller.system_prompt(task))
+    def test_swarm_memory_is_created_only_after_second_collapse_and_40(self):
+        def item(index):
+            return BenchmarkTask(
+                f"x/{index}",
+                f"def add_{index}(a,b):\n    \"\"\"sequence list sum\"\"\"\n",
+                "def check(candidate): pass",
+                f"add_{index}",
+            )
+
+        controller = SwarmController(0)
+        self.assertNotIn("Prior-cycle intuition", controller.system_prompt(item(0)))
+        index = 1
+        for _ in range(12):
+            if controller.state.phase == "RYTM":
+                break
+            controller.observe(item(index), True, "    return a+b\n", "", attempts=1)
+            index += 1
+        else:
+            self.fail(controller.phase_history)
+
+        for _ in range(20):
+            if controller.state.phase == "40":
+                break
+            controller.observe(item(index), False, "", "AssertionError", attempts=3)
+            index += 1
+        else:
+            self.fail(controller.phase_history)
+        self.assertFalse(controller.intuitive_memory)
+        self.assertIn("Prior-cycle intuition", controller.system_prompt(item(index)))
+        self.assertEqual(controller.state.phase, "RÓŻNICA")
 
     def test_analysis_confirmed_at_25_percent(self):
         config = ProtocolConfig(tasks_per_agent=1, max_live_calls=60, bootstrap_samples=1000)
@@ -143,6 +161,49 @@ class CoreTests(unittest.TestCase):
         config.validate()
         self.assertEqual(config.agents_per_condition * config.tasks_per_agent, 160)
         self.assertEqual(config.agents_per_condition * config.tasks_per_agent * config.max_attempts * 2, 960)
+
+
+    def test_persistent_whole_mismatch_drains_fuel_and_causes_second_collapse(self):
+        controller = SwarmController(0)
+        controller.state.phase = "STAGNACJA"
+        controller.state.state = "STAGNACJA"
+        controller.state.fuel = 0.78
+        controller.state.balance = 0.56
+        controller.state.vertical_alignment = 0.58
+        controller.state.rhythm_alignment = 0.42
+        controller.state.regulation = 0.52
+        controller.state.tension = 0.30
+        controller.state.crystallization = 0.90
+        controller.state.whole_alignment = controller._whole_alignment()
+        starting_fuel = controller.state.fuel
+
+        for index in range(12):
+            controller.observe(
+                BenchmarkTask(
+                    f"m/{index}",
+                    f"def mismatch_{index}():\n",
+                    "def check(candidate): pass",
+                    f"mismatch_{index}",
+                ),
+                True,
+                "    return 1\n",
+                "",
+                attempts=3,
+            )
+            if controller.state.collapse_two_count:
+                break
+
+        self.assertLess(controller.state.fuel, starting_fuel)
+        self.assertEqual(controller.state.collapse_two_count, 1)
+        self.assertIn("PĘKNIĘCIE", controller.phase_history)
+        self.assertIn("ROZPAD_II", controller.phase_history)
+        self.assertEqual(controller.state.phase, "40")
+
+    def test_protocol_rejects_invalid_threshold_ordering(self):
+        with self.assertRaises(ValueError):
+            ProtocolConfig(stagnation_threshold=0.70, rhythm_threshold=0.62).validate()
+        with self.assertRaises(ValueError):
+            ProtocolConfig(first_collapse_fuel=0.50, recovery_fuel=0.44).validate()
 
 
 if __name__ == "__main__":

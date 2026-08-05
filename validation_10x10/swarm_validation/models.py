@@ -13,7 +13,12 @@ class Usage:
 
     @property
     def total_tokens(self) -> int:
-        return self.input_tokens + self.output_tokens + self.cache_creation_input_tokens + self.cache_read_input_tokens
+        return (
+            self.input_tokens
+            + self.output_tokens
+            + self.cache_creation_input_tokens
+            + self.cache_read_input_tokens
+        )
 
     def to_dict(self) -> dict[str, int]:
         return asdict(self) | {"total_tokens": self.total_tokens}
@@ -48,20 +53,46 @@ class WorkingObservation:
     passed: bool
     status: str
     cycle_index: int
+    quality: float = 0.0
+    phase: str = ""
 
 
 @dataclass
 class EngineState:
+    # Energetic reserve. It is a causal control variable, not a score.
     fuel: float = 1.0
     memory: float = 0.0
     entropy: float = 0.0
-    state: str = "A"
+    state: str = "RÓŻNICA"
     solved_count: int = 0
     previous_w: float = 0.5
     cycle_index: int = 0
     tasks_in_cycle: int = 0
-    phase: str = "ACTIVE"
+    phase: str = "RÓŻNICA"
     spiral_level: float = 0.0
+
+    # Dynamic geometry of the cycle.
+    vertical_alignment: float = 0.5
+    balance: float = 0.5
+    tension: float = 0.25
+    regulation: float = 0.5
+    rhythm_alignment: float = 0.5
+    crystallization: float = 0.0
+    last_quality: float = 0.5
+
+    # Alignment with the wider system and the accumulated energetic cost of mismatch.
+    whole_alignment: float = 0.5
+    mismatch_load: float = 0.0
+
+    # Persistence counters prevent one noisy observation from forcing a phase change.
+    phase_age: int = 0
+    success_streak: int = 0
+    failure_streak: int = 0
+    low_balance_streak: int = 0
+    stagnation_streak: int = 0
+    collapse_one_age: int = 0
+    collapse_one_count: int = 0
+    collapse_two_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

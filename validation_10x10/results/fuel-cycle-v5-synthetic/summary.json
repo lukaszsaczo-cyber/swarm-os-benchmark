@@ -1,0 +1,164 @@
+[
+  {
+    "scenario": "second_collapse_rebirth",
+    "seed": 101,
+    "verdict": "NOT_CONFIRMED",
+    "token_reduction": 0.07800531774400876,
+    "token_reduction_ci95": [
+      0.04400058424012265,
+      0.10977939700798588
+    ],
+    "quality_pass_rate_delta": 0.0,
+    "swarm": {
+      "observations": 160,
+      "passed": 120,
+      "pass_rate": 0.75,
+      "attempts": 242,
+      "input_tokens": 50425,
+      "output_tokens": 1936,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "total_tokens": 52361,
+      "provider_latency_ms": 242.0
+    },
+    "baseline": {
+      "observations": 160,
+      "passed": 120,
+      "pass_rate": 0.75,
+      "attempts": 265,
+      "input_tokens": 54671,
+      "output_tokens": 2120,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "total_tokens": 56791,
+      "provider_latency_ms": 265.0
+    },
+    "swarm_memory_calls": 50,
+    "swarm_retry_memory_calls": 0,
+    "second_collapse_agents": 10,
+    "first_collapse_agents": 0,
+    "agents_with_intuition": 10,
+    "phase_history_agent_0": [
+      "RÓŻNICA",
+      "NAPIĘCIE",
+      "REGULACJA",
+      "DOPASOWANIE",
+      "PION",
+      "KRYSTALIZACJA",
+      "RYTM",
+      "STAGNACJA",
+      "PĘKNIĘCIE",
+      "ROZPAD_II",
+      "3",
+      "6",
+      "28",
+      "40",
+      "RÓŻNICA",
+      "40→RÓŻNICA",
+      "NAPIĘCIE",
+      "REGULACJA",
+      "DOPASOWANIE",
+      "PION",
+      "KRYSTALIZACJA"
+    ]
+  },
+  {
+    "scenario": "stable_rhythm",
+    "seed": 202,
+    "verdict": "NOT_CONFIRMED",
+    "token_reduction": 0.0,
+    "token_reduction_ci95": [
+      0.0,
+      0.0
+    ],
+    "quality_pass_rate_delta": 0.0,
+    "swarm": {
+      "observations": 160,
+      "passed": 160,
+      "pass_rate": 1.0,
+      "attempts": 160,
+      "input_tokens": 28790,
+      "output_tokens": 1280,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "total_tokens": 30070,
+      "provider_latency_ms": 160.0
+    },
+    "baseline": {
+      "observations": 160,
+      "passed": 160,
+      "pass_rate": 1.0,
+      "attempts": 160,
+      "input_tokens": 28790,
+      "output_tokens": 1280,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "total_tokens": 30070,
+      "provider_latency_ms": 160.0
+    },
+    "swarm_memory_calls": 0,
+    "swarm_retry_memory_calls": 0,
+    "second_collapse_agents": 0,
+    "first_collapse_agents": 0,
+    "agents_with_intuition": 0,
+    "phase_history_agent_0": [
+      "RÓŻNICA",
+      "NAPIĘCIE",
+      "REGULACJA",
+      "DOPASOWANIE",
+      "PION",
+      "KRYSTALIZACJA",
+      "RYTM"
+    ]
+  },
+  {
+    "scenario": "first_collapse_recovery",
+    "seed": 303,
+    "verdict": "NOT_CONFIRMED",
+    "token_reduction": 0.0,
+    "token_reduction_ci95": [
+      0.0,
+      0.0
+    ],
+    "quality_pass_rate_delta": 0.0,
+    "swarm": {
+      "observations": 160,
+      "passed": 140,
+      "pass_rate": 0.875,
+      "attempts": 200,
+      "input_tokens": 38783,
+      "output_tokens": 1600,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "total_tokens": 40383,
+      "provider_latency_ms": 200.0
+    },
+    "baseline": {
+      "observations": 160,
+      "passed": 140,
+      "pass_rate": 0.875,
+      "attempts": 200,
+      "input_tokens": 38783,
+      "output_tokens": 1600,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "total_tokens": 40383,
+      "provider_latency_ms": 200.0
+    },
+    "swarm_memory_calls": 0,
+    "swarm_retry_memory_calls": 0,
+    "second_collapse_agents": 0,
+    "first_collapse_agents": 10,
+    "agents_with_intuition": 0,
+    "phase_history_agent_0": [
+      "RÓŻNICA",
+      "NAPIĘCIE",
+      "ROZPAD_I",
+      "REGULACJA",
+      "DOPASOWANIE",
+      "PION",
+      "KRYSTALIZACJA",
+      "RYTM"
+    ]
+  }
+]
