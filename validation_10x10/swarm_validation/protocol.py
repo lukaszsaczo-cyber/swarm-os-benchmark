@@ -28,11 +28,29 @@ class ProtocolConfig:
     max_live_calls: int = 960
     pricing_input_usd_per_million: float | None = None
     pricing_output_usd_per_million: float | None = None
-    cycle_length: int = 8
+
+    # Legacy name retained for config compatibility. It is now only a safety ceiling;
+    # ROZPAD II is caused by rhythm loss after crystallization, never by task count.
+    cycle_length: int = 16
     max_intuitive_entries: int = 4
     max_prompt_memory_entries: int = 1
     memory_min_keyword_overlap: int = 2
     memory_min_jaccard: float = 0.08
+    memory_recall_fuel: float = 0.42
+
+    vertical_threshold: float = 0.62
+    crystallization_threshold: float = 0.66
+    rhythm_threshold: float = 0.62
+    stagnation_threshold: float = 0.46
+    crack_threshold: float = 0.34
+    first_collapse_fuel: float = 0.24
+    first_collapse_balance: float = 0.30
+    first_collapse_persistence: int = 2
+    recovery_fuel: float = 0.44
+    recovery_balance: float = 0.42
+    recovery_window: int = 3
+    stagnation_persistence: int = 2
+    crack_persistence: int = 3
 
     @classmethod
     def load(cls, path: str | Path) -> "ProtocolConfig":
@@ -51,7 +69,32 @@ class ProtocolConfig:
             raise ValueError("tasks_per_agent, max_attempts and cycle_length must be positive")
         expected = self.agents_per_condition * self.tasks_per_agent * self.max_attempts * 2
         if self.max_live_calls < expected:
-            raise ValueError(f"max_live_calls={self.max_live_calls} is below worst-case protocol calls={expected}")
+            raise ValueError(
+                f"max_live_calls={self.max_live_calls} is below worst-case protocol calls={expected}"
+            )
+        bounded = {
+            "memory_recall_fuel": self.memory_recall_fuel,
+            "vertical_threshold": self.vertical_threshold,
+            "crystallization_threshold": self.crystallization_threshold,
+            "rhythm_threshold": self.rhythm_threshold,
+            "stagnation_threshold": self.stagnation_threshold,
+            "crack_threshold": self.crack_threshold,
+            "first_collapse_fuel": self.first_collapse_fuel,
+            "first_collapse_balance": self.first_collapse_balance,
+            "recovery_fuel": self.recovery_fuel,
+            "recovery_balance": self.recovery_balance,
+        }
+        for name, value in bounded.items():
+            if not 0.0 <= value <= 1.0:
+                raise ValueError(f"{name} must be in [0, 1]")
+        for name, value in {
+            "first_collapse_persistence": self.first_collapse_persistence,
+            "recovery_window": self.recovery_window,
+            "stagnation_persistence": self.stagnation_persistence,
+            "crack_persistence": self.crack_persistence,
+        }.items():
+            if value < 1:
+                raise ValueError(f"{name} must be positive")
 
 
 def assign_tasks(tasks: list[BenchmarkTask], config: ProtocolConfig) -> dict[int, list[BenchmarkTask]]:
@@ -62,8 +105,12 @@ def assign_tasks(tasks: list[BenchmarkTask], config: ProtocolConfig) -> dict[int
     selected = list(tasks)
     random.Random(config.assignment_seed).shuffle(selected)
     selected = selected[:needed]
-    return {agent_id: selected[agent_id * config.tasks_per_agent:(agent_id + 1) * config.tasks_per_agent]
-            for agent_id in range(config.agents_per_condition)}
+    return {
+        agent_id: selected[
+            agent_id * config.tasks_per_agent : (agent_id + 1) * config.tasks_per_agent
+        ]
+        for agent_id in range(config.agents_per_condition)
+    }
 
 
 def dataset_sha256(path: str | Path) -> str:

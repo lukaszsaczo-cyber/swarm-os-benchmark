@@ -63,18 +63,27 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(len(set(ids)), 20)
         self.assertEqual(len(assignment), 10)
 
-    def test_swarm_memory_is_created_only_after_crossing_40(self):
-        task = BenchmarkTask(
-            "x",
-            "def add(a,b):\n    \"\"\"sequence list sum\"\"\"\n",
-            "def check(candidate): pass",
-            "add",
-        )
-        controller = SwarmController(0, cycle_length=1)
-        self.assertNotIn("Prior-cycle intuition", controller.system_prompt(task))
-        controller.observe(task, True, "    return a+b\n", "")
-        self.assertEqual(controller.state.phase, "40")
-        self.assertIn("Prior-cycle intuition", controller.system_prompt(task))
+    def test_swarm_memory_is_created_only_after_second_collapse_and_40(self):
+        def item(index):
+            return BenchmarkTask(
+                f"x/{index}",
+                f"def add_{index}(a,b):\n    \"\"\"sequence list sum\"\"\"\n",
+                "def check(candidate): pass",
+                f"add_{index}",
+            )
+
+        controller = SwarmController(0)
+        self.assertNotIn("Prior-cycle intuition", controller.system_prompt(item(0)))
+        index = 1
+        while controller.state.phase != "RYTM":
+            controller.observe(item(index), True, "    return a+b\n", "", attempts=1)
+            index += 1
+        while controller.state.phase != "40":
+            controller.observe(item(index), False, "", "AssertionError", attempts=3)
+            index += 1
+        self.assertFalse(controller.intuitive_memory)
+        self.assertIn("Prior-cycle intuition", controller.system_prompt(item(index)))
+        self.assertEqual(controller.state.phase, "RÓŻNICA")
 
     def test_analysis_confirmed_at_25_percent(self):
         config = ProtocolConfig(tasks_per_agent=1, max_live_calls=60, bootstrap_samples=1000)
