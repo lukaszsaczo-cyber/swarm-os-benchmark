@@ -70,6 +70,17 @@ def _features(completion: str, entry_point: str) -> list[str]:
     return features[:3]
 
 
+def _project_key(task_id: str) -> str | None:
+    if "::" not in task_id:
+        return None
+    return task_id.split("::", 1)[0]
+
+
+def _project_convention(task: BenchmarkTask) -> str:
+    match = re.search(r"^#?\s*Project convention:\s*(.+)$", task.prompt, re.MULTILINE)
+    return " ".join(match.group(1).split())[:120] if match else ""
+
+
 def _generalize(task: BenchmarkTask, completion: str) -> tuple[str, list[str]]:
     keys = _keywords(task.prompt)
     keyset = set(keys)
@@ -84,7 +95,11 @@ def _generalize(task: BenchmarkTask, completion: str) -> tuple[str, list[str]]:
     else:
         domain = "Matching task structure"
     technique = _features(completion, task.entry_point)[0]
-    return f"{domain}: {technique}; boundary guards."[:120], keys
+    convention = _project_convention(task)
+    lesson = f"{domain}: {technique}; boundary guards."
+    if convention:
+        lesson += f" Project convention: {convention}"
+    return lesson[:220], keys
 
 
 @dataclass
@@ -95,6 +110,8 @@ class SwarmController:
     cycle_length: int = 16
     max_intuitive_entries: int = 4
     max_prompt_memory_entries: int = 1
+    max_working_prompt_entries: int = 1
+    working_memory_min_quality: float = 0.70
     min_keyword_overlap: int = 2
     min_jaccard: float = 0.08
     memory_recall_fuel: float = 0.42
@@ -213,13 +230,50 @@ class SwarmController:
         scored.sort(reverse=True, key=lambda item: item[:4])
         return [item[-1] for item in scored[: self.max_prompt_memory_entries]]
 
+    def _select_working(self, task: BenchmarkTask) -> list[WorkingObservation]:
+        if self.max_working_prompt_entries <= 0:
+            return []
+        if self.state.fuel < self.memory_recall_fuel:
+            return []
+        if self.state.phase in {"ROZPAD_I", "STAGNACJA", "PĘKNIĘCIE", "ROZPAD_II"}:
+            return []
+        project = _project_key(task.task_id)
+        if project is None:
+            return []
+
+        task_words = set(_keywords(task.prompt + " " + task.entry_point))
+        scored: list[tuple[int, float, float, int, WorkingObservation]] = []
+        for observation in self.working_memory:
+            if not observation.passed or observation.quality < self.working_memory_min_quality:
+                continue
+            if _project_key(observation.task_id) != project:
+                continue
+            words = set(observation.keywords)
+            overlap = len(task_words & words)
+            union = len(task_words | words) or 1
+            jaccard = overlap / union
+            if overlap < self.min_keyword_overlap or jaccard < self.min_jaccard:
+                continue
+            scored.append((overlap, jaccard, observation.quality, observation.cycle_index, observation))
+        scored.sort(reverse=True, key=lambda item: item[:4])
+        return [item[-1] for item in scored[: self.max_working_prompt_entries]]
+
     def system_prompt(self, task: BenchmarkTask) -> str:
         self._cross_threshold_40()
-        selected = self._select(task)
-        if not selected:
-            return BASE_SYSTEM
-        memory = "\n".join(f"- {entry.lesson}" for entry in selected)
-        return BASE_SYSTEM + "\n\nPrior-cycle intuition:\n" + memory
+        intuitive = self._select(task)
+        working = self._select_working(task)
+        sections: list[str] = []
+        if intuitive:
+            sections.append(
+                "Prior-cycle intuition:\n"
+                + "\n".join(f"- {entry.lesson}" for entry in intuitive)
+            )
+        if working:
+            sections.append(
+                "Current-cycle working guidance:\n"
+                + "\n".join(f"- {entry.lesson}" for entry in working)
+            )
+        return BASE_SYSTEM if not sections else BASE_SYSTEM + "\n\n" + "\n\n".join(sections)
 
     def retry_system_prompt(self, task: BenchmarkTask) -> str:
         # Retry uses local test feedback only. Intuition is removed after a miss.

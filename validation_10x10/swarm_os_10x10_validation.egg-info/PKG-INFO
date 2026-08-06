@@ -1,0 +1,6 @@
+Metadata-Version: 2.4
+Name: swarm-os-10x10-validation
+Version: 3.0.0a1
+Summary: Controlled 10-vs-10 Claude benchmark for SWARM_OS
+Requires-Python: >=3.10
+Requires-Dist: anthropic>=0.40.0

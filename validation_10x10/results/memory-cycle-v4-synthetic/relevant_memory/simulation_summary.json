@@ -1,0 +1,74 @@
+{
+  "scenario": "relevant_memory",
+  "seed": 101,
+  "report": {
+    "schema_version": "4.0",
+    "protocol": {
+      "model": "claude-sonnet-4-6",
+      "agents_per_condition": 10,
+      "tasks_per_agent": 16,
+      "assignment_seed": 20260801,
+      "call_order_seed": 330016,
+      "max_attempts": 3,
+      "max_tokens": 2048,
+      "temperature": null,
+      "timeout_seconds": 3.0,
+      "memory_mb": 512,
+      "target_token_reduction": 0.2,
+      "quality_noninferiority_margin": 0.02,
+      "bootstrap_samples": 2000,
+      "max_live_calls": 960,
+      "pricing_input_usd_per_million": null,
+      "pricing_output_usd_per_million": null,
+      "cycle_length": 8,
+      "max_intuitive_entries": 4,
+      "max_prompt_memory_entries": 1,
+      "memory_min_keyword_overlap": 2,
+      "memory_min_jaccard": 0.08
+    },
+    "swarm": {
+      "observations": 160,
+      "passed": 159,
+      "pass_rate": 0.99375,
+      "attempts": 207,
+      "input_tokens": 41723,
+      "output_tokens": 1656,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "total_tokens": 43379,
+      "provider_latency_ms": 207.0
+    },
+    "baseline": {
+      "observations": 160,
+      "passed": 159,
+      "pass_rate": 0.99375,
+      "attempts": 218,
+      "input_tokens": 42294,
+      "output_tokens": 1744,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "total_tokens": 44038,
+      "provider_latency_ms": 218.0
+    },
+    "token_reduction": 0.014964348971342911,
+    "token_reduction_cluster_bootstrap_ci95": [
+      -0.0010850624061989778,
+      0.03414415082109399
+    ],
+    "quality_pass_rate_delta": 0.0,
+    "quality_delta_cluster_bootstrap_ci95": [
+      0.0,
+      0.0
+    ],
+    "gates": {
+      "complete_10x10": true,
+      "token_reduction_lower_ci_at_least_target": false,
+      "quality_noninferiority_lower_ci": true
+    },
+    "verdict": "NOT_CONFIRMED"
+  },
+  "swarm_memory_calls": 80,
+  "swarm_retry_memory_calls": 0,
+  "forced_failure_calls_swarm": 0,
+  "forced_failure_calls_baseline": 0
+}

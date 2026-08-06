@@ -17,6 +17,7 @@ class ProtocolConfig:
     tasks_per_agent: int = 16
     assignment_seed: int = 20260801
     call_order_seed: int = 330016
+    assignment_mode: str = "shuffled"
     max_attempts: int = 3
     max_tokens: int = 2048
     temperature: float | None = None
@@ -34,6 +35,8 @@ class ProtocolConfig:
     cycle_length: int = 16
     max_intuitive_entries: int = 4
     max_prompt_memory_entries: int = 1
+    max_working_prompt_entries: int = 1
+    working_memory_min_quality: float = 0.70
     memory_min_keyword_overlap: int = 2
     memory_min_jaccard: float = 0.08
     memory_recall_fuel: float = 0.42
@@ -69,6 +72,8 @@ class ProtocolConfig:
     def validate(self) -> None:
         if self.agents_per_condition != 10:
             raise ValueError("Final protocol requires exactly 10 agents per condition")
+        if self.assignment_mode not in {"shuffled", "project_sequence"}:
+            raise ValueError("assignment_mode must be shuffled or project_sequence")
         if self.tasks_per_agent < 1 or self.max_attempts < 1 or self.cycle_length < 1:
             raise ValueError("tasks_per_agent, max_attempts and cycle_length must be positive")
         expected = self.agents_per_condition * self.tasks_per_agent * self.max_attempts * 2
@@ -79,6 +84,7 @@ class ProtocolConfig:
         bounded = {
             "memory_min_jaccard": self.memory_min_jaccard,
             "memory_recall_fuel": self.memory_recall_fuel,
+            "working_memory_min_quality": self.working_memory_min_quality,
             "vertical_threshold": self.vertical_threshold,
             "crystallization_threshold": self.crystallization_threshold,
             "rhythm_threshold": self.rhythm_threshold,
@@ -120,6 +126,37 @@ def assign_tasks(tasks: list[BenchmarkTask], config: ProtocolConfig) -> dict[int
     needed = config.agents_per_condition * config.tasks_per_agent
     if len(tasks) < needed:
         raise ValueError(f"Dataset has {len(tasks)} tasks; final protocol requires at least {needed}")
+
+    if config.assignment_mode == "project_sequence":
+        grouped: dict[str, list[BenchmarkTask]] = {}
+        for task in tasks:
+            metadata = task.metadata or {}
+            project_id = metadata.get("project_id")
+            step_index = metadata.get("step_index")
+            if not isinstance(project_id, str) or not project_id:
+                raise ValueError(f"Task {task.task_id} is missing project_id metadata")
+            if not isinstance(step_index, int):
+                raise ValueError(f"Task {task.task_id} is missing integer step_index metadata")
+            grouped.setdefault(project_id, []).append(task)
+
+        eligible: list[tuple[str, list[BenchmarkTask]]] = []
+        for project_id, project_tasks in grouped.items():
+            ordered = sorted(project_tasks, key=lambda item: int((item.metadata or {})["step_index"]))
+            steps = [int((item.metadata or {})["step_index"]) for item in ordered]
+            if len(ordered) >= config.tasks_per_agent and steps[: config.tasks_per_agent] == list(
+                range(1, config.tasks_per_agent + 1)
+            ):
+                eligible.append((project_id, ordered[: config.tasks_per_agent]))
+
+        if len(eligible) < config.agents_per_condition:
+            raise ValueError(
+                f"Dataset has {len(eligible)} complete project sequences; "
+                f"protocol requires {config.agents_per_condition}"
+            )
+        random.Random(config.assignment_seed).shuffle(eligible)
+        selected_projects = eligible[: config.agents_per_condition]
+        return {agent_id: tasks for agent_id, (_, tasks) in enumerate(selected_projects)}
+
     selected = list(tasks)
     random.Random(config.assignment_seed).shuffle(selected)
     selected = selected[:needed]
