@@ -1,0 +1,2 @@
+[console_scripts]
+swarm-10x10 = swarm_validation.cli:main

@@ -71,18 +71,56 @@ def analyze(outcomes: list[TaskOutcome], config: ProtocolConfig) -> dict[str, An
     baseline = [item for item in outcomes if item.condition == "baseline"]
 
     def summary(items: list[TaskOutcome]) -> dict[str, Any]:
+        passed = sum(item.passed for item in items)
+        input_tokens = sum(item.input_tokens for item in items)
+        output_tokens = sum(item.output_tokens for item in items)
+        cache_creation = sum(item.cache_creation_input_tokens for item in items)
+        cache_read = sum(item.cache_read_input_tokens for item in items)
+        total_tokens = input_tokens + output_tokens + cache_creation + cache_read
+        estimated_cost = None
+        if (
+            config.pricing_input_usd_per_million is not None
+            and config.pricing_output_usd_per_million is not None
+        ):
+            estimated_cost = (
+                (input_tokens + cache_creation + cache_read)
+                * config.pricing_input_usd_per_million
+                / 1_000_000
+                + output_tokens
+                * config.pricing_output_usd_per_million
+                / 1_000_000
+            )
         return {
             "observations": len(items),
-            "passed": sum(item.passed for item in items),
-            "pass_rate": sum(item.passed for item in items) / len(items),
+            "passed": passed,
+            "pass_rate": passed / len(items),
             "attempts": sum(item.attempts for item in items),
-            "input_tokens": sum(item.input_tokens for item in items),
-            "output_tokens": sum(item.output_tokens for item in items),
-            "cache_creation_input_tokens": sum(item.cache_creation_input_tokens for item in items),
-            "cache_read_input_tokens": sum(item.cache_read_input_tokens for item in items),
-            "total_tokens": sum(item.total_tokens for item in items),
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "cache_creation_input_tokens": cache_creation,
+            "cache_read_input_tokens": cache_read,
+            "total_tokens": total_tokens,
+            "tokens_per_passed_task": total_tokens / passed if passed else None,
+            "attempts_per_passed_task": sum(item.attempts for item in items) / passed if passed else None,
+            "estimated_cost_usd": estimated_cost,
+            "cost_per_passed_task_usd": estimated_cost / passed if estimated_cost is not None and passed else None,
             "provider_latency_ms": round(sum(item.provider_latency_ms for item in items), 3),
         }
+
+    swarm_summary = summary(swarm)
+    baseline_summary = summary(baseline)
+    token_per_pass_reduction = (
+        1.0 - swarm_summary["tokens_per_passed_task"] / baseline_summary["tokens_per_passed_task"]
+        if swarm_summary["tokens_per_passed_task"] is not None
+        and baseline_summary["tokens_per_passed_task"]
+        else None
+    )
+    cost_per_pass_reduction = (
+        1.0 - swarm_summary["cost_per_passed_task_usd"] / baseline_summary["cost_per_passed_task_usd"]
+        if swarm_summary["cost_per_passed_task_usd"] is not None
+        and baseline_summary["cost_per_passed_task_usd"]
+        else None
+    )
 
     token_gate = reduction_ci[0] >= config.target_token_reduction
     quality_gate = quality_ci[0] >= -config.quality_noninferiority_margin
@@ -91,11 +129,13 @@ def analyze(outcomes: list[TaskOutcome], config: ProtocolConfig) -> dict[str, An
     return {
         "schema_version": "5.0",
         "protocol": config.to_dict(),
-        "swarm": summary(swarm),
-        "baseline": summary(baseline),
+        "swarm": swarm_summary,
+        "baseline": baseline_summary,
         "token_reduction": reduction,
         "token_reduction_cluster_bootstrap_ci95": reduction_ci,
         "quality_pass_rate_delta": quality_delta,
+        "token_per_passed_task_reduction": token_per_pass_reduction,
+        "cost_per_passed_task_reduction": cost_per_pass_reduction,
         "quality_delta_cluster_bootstrap_ci95": quality_ci,
         "gates": {
             "complete_10x10": complete,
@@ -108,6 +148,8 @@ def analyze(outcomes: list[TaskOutcome], config: ProtocolConfig) -> dict[str, An
 
 def render_markdown(report: dict[str, Any]) -> str:
     pct = lambda value: f"{value * 100:.2f}%"
+    pct_optional = lambda value: "n/a" if value is None else pct(value)
+    fmt = lambda value, digits=2: "n/a" if value is None else format(value, f".{digits}f")
     sw = report["swarm"]
     base = report["baseline"]
     token_ci = report["token_reduction_cluster_bootstrap_ci95"]
@@ -125,12 +167,17 @@ def render_markdown(report: dict[str, Any]) -> str:
 | Input tokens | {sw['input_tokens']} | {base['input_tokens']} |
 | Output tokens | {sw['output_tokens']} | {base['output_tokens']} |
 | Total provider tokens | {sw['total_tokens']} | {base['total_tokens']} |
+| Tokens per passed task | {fmt(sw['tokens_per_passed_task'])} | {fmt(base['tokens_per_passed_task'])} |
+| Estimated provider cost (USD) | {fmt(sw['estimated_cost_usd'], 4)} | {fmt(base['estimated_cost_usd'], 4)} |
+| Cost per passed task (USD) | {fmt(sw['cost_per_passed_task_usd'], 6)} | {fmt(base['cost_per_passed_task_usd'], 6)} |
 
 ## Primary result
 
 - Token reduction: **{pct(report['token_reduction'])}**
 - 95% agent-cluster bootstrap CI: **{pct(token_ci[0])} to {pct(token_ci[1])}**
 - Pass-rate difference (SWARM − baseline): **{pct(report['quality_pass_rate_delta'])}**
+- Token reduction per passed task: **{pct_optional(report['token_per_passed_task_reduction'])}**
+- Cost reduction per passed task: **{pct_optional(report['cost_per_passed_task_reduction'])}**
 - 95% agent-cluster bootstrap CI: **{pct(quality_ci[0])} to {pct(quality_ci[1])}**
 
 ## Preregistered gates
